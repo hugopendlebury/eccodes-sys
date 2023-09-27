@@ -134,6 +134,14 @@ pub struct NearestGridpoint {
     pub value: f64, 
 }
 
+///Represent a latitude and longitude
+///Can be passed to find_nearest() as an iterable to locate multiple points for performance reasonss
+#[derive(Copy, Clone, PartialEq, Debug, Default)]
+pub struct GeoPoint {
+    pub lat: f64,
+    pub lon: f64
+}
+
 impl CodesHandle {
     ///The constructor that takes a [`path`](Path) to an existing file and
     ///a requested [`ProductKind`] and returns the [`CodesHandle`] object.

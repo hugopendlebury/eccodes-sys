@@ -8,6 +8,7 @@
 use std::{
     ffi::{CStr, CString},
     ptr::{self, addr_of_mut},
+    slice,
 };
 
 use eccodes_sys::{
@@ -20,7 +21,7 @@ use libc::{c_void, FILE};
 use num_traits::FromPrimitive;
 
 use crate::{
-    codes_handle::{NearestGridpoint, ProductKind},
+    codes_handle::{NearestGridpoint, ProductKind, GeoPoint},
     errors::{CodesError, CodesInternal},
 };
 
@@ -151,6 +152,38 @@ pub unsafe fn codes_get_double_array(
     }
 
     Ok(key_values)
+}
+
+pub unsafe fn codes_get_double_elements<T>(
+    handle: *mut codes_handle,
+    key: &str,
+    index_array: T
+) -> Result<Vec<f64>, CodesError> 
+where T: IntoIterator<Item=i32>{
+
+    let key = CString::new(key).unwrap();
+
+    let mut indexes : Vec<i32> = index_array.into_iter().collect();
+    let array_length = indexes.len();
+    let mut values: Vec<f64> = vec![0.0; array_length];
+
+    let error_code = eccodes_sys::codes_get_double_elements(
+        handle, 
+        key.as_ptr(), 
+        indexes.as_mut_ptr().cast::<i32>(),
+        array_length  as i64, 
+        values.as_mut_ptr()
+        
+    );
+
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+
+
+    Ok(values)
 }
 
 pub unsafe fn codes_get_long_array(
@@ -432,6 +465,73 @@ pub unsafe fn codes_grib_nearest_find(
     }
 
     Ok(output)
+}
+
+
+pub unsafe fn codes_grib_nearest_find_multiple<T>(
+    handle: *mut codes_handle,
+    geo_points: T,
+    is_lsm: bool
+)  -> Result<Vec<NearestGridpoint>, CodesError>
+where T: IntoIterator<Item=GeoPoint> {
+    let is_lsm_flag = if is_lsm {1} else {0};
+
+    let mut lats = Vec::<f64>::new();
+    let mut lons = Vec::<f64>::new();
+
+
+    let mut npoints: i64 = 0;
+
+    geo_points.into_iter().for_each(|p| {
+        lats.push(p.lat);
+        lons.push(p.lon);
+        npoints += 1;
+    });
+
+    let inlats = lats.as_ptr();
+    let inlons = lons.as_ptr();
+
+    let array_length = npoints as usize;
+
+    let mut values=  vec![0.0; array_length];
+    let mut distances = vec![0.0; array_length];
+    let mut indexes = vec![0; array_length];
+
+    let mut outlats = vec![0.0; array_length];
+    let mut outlons = vec![0.0; array_length];
+  
+    let error_code = eccodes_sys::codes_grib_nearest_find_multiple(handle, 
+        is_lsm_flag, 
+        inlats, 
+        inlons, 
+        npoints, 
+        outlats.as_mut_ptr().cast::<f64>(), 
+        outlons.as_mut_ptr().cast::<f64>(), 
+        values.as_mut_ptr().cast::<f64>(), 
+        distances.as_mut_ptr().cast::<f64>(), 
+        indexes.as_mut_ptr().cast::<i32>());
+
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+
+
+    let results : Vec<_> = (0 as usize..npoints as usize).map(|i| {
+
+
+        return NearestGridpoint {
+            lat : lats[i],
+            lon : lons[i],
+            distance : distances[i],
+            value : values[i],
+            index : indexes[i]
+        };
+    }).collect();
+    
+
+    Ok(results)
 }
 
 pub unsafe fn codes_set_long(

@@ -3,8 +3,19 @@ mod read;
 mod write;
 
 use eccodes_sys::codes_nearest;
+use fallible_iterator::FallibleIterator;
 use log::warn;
 use std::ptr::null_mut;
+
+trait FindNearestTrait {
+    fn find_nearest(&mut self, point: FloatOrPoint ) -> Result<[NearestGridpoint; 4], CodesError>;
+}
+
+#[derive(Debug)]
+enum FloatOrPoint {
+    Float(f64, f64),
+    GeoPoint(GeoPoint)
+}
 
 use crate::{
     codes_handle::KeyedMessage,
@@ -12,11 +23,12 @@ use crate::{
     intermediate_bindings::{
         codes_get_message_copy, codes_grib_nearest_delete, codes_grib_nearest_find,
         codes_grib_nearest_new, codes_handle_delete, codes_handle_new_from_message_copy,
-        codes_keys_iterator_delete,
-    },
+        codes_keys_iterator_delete, codes_grib_nearest_find_multiple, codes_grib_nearest_find_multiple_vec,
+        codes_get_double_elements,
+    }, Key,
 };
 
-use super::{KeysIteratorFlags, NearestGridpoint};
+use super::{KeysIteratorFlags, NearestGridpoint, GeoPoint};
 
 impl KeyedMessage {
     fn nearest_handle(&mut self) -> Result<*mut codes_nearest, CodesError> {
@@ -66,7 +78,7 @@ impl KeyedMessage {
     ///
     ///This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     ///one of ecCodes function returns the non-zero code.
-    pub fn find_nearest(
+    fn find_nearest(
         &mut self,
         lat: f64,
         lon: f64,
@@ -80,6 +92,71 @@ impl KeyedMessage {
 
         Ok(output_points)
     }
+
+    pub fn codes_get_double_elements<T>(
+        &mut self,
+        key: &str,
+        index_array: T
+    ) -> Result<Vec<f64>, CodesError> 
+    where T: IntoIterator<Item=i32>{
+        let output_values;
+
+        unsafe {
+            output_values = codes_get_double_elements(self.message_handle, key, index_array);
+        }
+
+        output_values
+    }
+    
+    pub fn find_nearest_multiple<T> (
+        &mut self,
+        is_lsm: bool,
+        points: T
+    ) -> Result<impl Iterator<Item=NearestGridpoint>, CodesError> 
+    where T: IntoIterator<Item=GeoPoint> {
+
+        let output_points;
+
+        unsafe {
+            output_points = codes_grib_nearest_find_multiple(self.message_handle, points, is_lsm);
+        }
+
+        output_points
+    }
+
+
+    pub fn find_nearest_multiple_vec<T> (
+        &mut self,
+        is_lsm: bool,
+        points: T
+    ) -> Result<Vec<NearestGridpoint>, CodesError> 
+    where T: IntoIterator<Item=GeoPoint> {
+
+        let output_points;
+
+        unsafe {
+            output_points = codes_grib_nearest_find_multiple_vec(self.message_handle, points, is_lsm);
+        }
+
+        output_points
+    }
+
+
+}
+
+
+impl FindNearestTrait for KeyedMessage {
+
+    fn find_nearest  (
+        &mut self,
+        point: FloatOrPoint
+    ) -> Result<[NearestGridpoint; 4], CodesError> {
+        match point {
+            FloatOrPoint::Float(lat, lon ) => self.find_nearest(lat, lon),
+            FloatOrPoint::GeoPoint(p) => self.find_nearest(p.lat,p.lon),
+        }
+    }
+
 }
 
 impl Clone for KeyedMessage {

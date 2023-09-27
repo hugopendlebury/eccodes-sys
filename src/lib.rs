@@ -211,5 +211,5 @@ pub mod errors;
 mod intermediate_bindings;
 
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator, FromFallibleIterator};
-pub use codes_handle::{CodesHandle, Key, KeyedMessage, KeyType, KeysIteratorFlags, NearestGridpoint, ProductKind};
+pub use codes_handle::{CodesHandle, Key, KeyedMessage, KeyType, KeysIteratorFlags, NearestGridpoint, ProductKind, GeoPoint};
 pub use errors::CodesError;
