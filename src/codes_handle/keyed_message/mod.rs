@@ -78,7 +78,7 @@ impl KeyedMessage {
     ///
     ///This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     ///one of ecCodes function returns the non-zero code.
-    fn find_nearest(
+    pub fn find_nearest(
         &mut self,
         lat: f64,
         lon: f64,
@@ -112,7 +112,7 @@ impl KeyedMessage {
         &mut self,
         is_lsm: bool,
         points: T
-    ) -> Result<impl Iterator<Item=NearestGridpoint>, CodesError> 
+    ) -> Result<Vec<NearestGridpoint>, CodesError> 
     where T: IntoIterator<Item=GeoPoint> {
 
         let output_points;
