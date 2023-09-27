@@ -23,7 +23,7 @@ use crate::{
     intermediate_bindings::{
         codes_get_message_copy, codes_grib_nearest_delete, codes_grib_nearest_find,
         codes_grib_nearest_new, codes_handle_delete, codes_handle_new_from_message_copy,
-        codes_keys_iterator_delete, codes_grib_nearest_find_multiple, codes_grib_nearest_find_multiple_vec,
+        codes_keys_iterator_delete, codes_grib_nearest_find_multiple,
         codes_get_double_elements,
     }, Key,
 };
@@ -125,21 +125,6 @@ impl KeyedMessage {
     }
 
 
-    pub fn find_nearest_multiple_vec<T> (
-        &mut self,
-        is_lsm: bool,
-        points: T
-    ) -> Result<Vec<NearestGridpoint>, CodesError> 
-    where T: IntoIterator<Item=GeoPoint> {
-
-        let output_points;
-
-        unsafe {
-            output_points = codes_grib_nearest_find_multiple_vec(self.message_handle, points, is_lsm);
-        }
-
-        output_points
-    }
 
 
 }
